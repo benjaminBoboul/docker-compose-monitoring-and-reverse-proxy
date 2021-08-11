@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v2.28.1
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+ 
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.37.5 
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  grafana:
+    image: grafana/grafana:8.1.1
+    labels:
+      - traefik.http.routers.grafana.rule=Host(`grafana.localhost`)
+      - traefik.http.services.grafana-docker-monitoring.loadbalancer.server.port=3000
+    environment:
+      - HTTP_USER=admin
+      - HTTP_PASS=admin
+
+  reverse-proxy:
+    image: traefik:v2.4
+    command: --api.insecure=true --providers.docker
+    ports:
+      - 80:80
+      - 8080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  webapp:
+    image: nginx:alpine
+    labels:
+      - traefik.http.routers.webapp.rule=Host(`www.localhost`)
